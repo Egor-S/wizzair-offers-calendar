@@ -2,6 +2,7 @@ import argparse
 import email
 import imaplib
 import logging
+from collections import Counter
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from email.header import decode_header
@@ -25,34 +26,8 @@ def main():
         imap.login(args.username, args.password)
         offers = collect(imap, args.cache)
 
-    current_date = offers[0].timestamp.date()
-    current_date -= timedelta(days=current_date.weekday())  # move to the Monday before the first offer
-    end_date = offers[-1].timestamp.date()
-    end_date += timedelta(days=7 - end_date.weekday())  # move to the Monday after the last offer
-
-    oid = 0
-    rows = []
-    while current_date < end_date:
-        row = []
-        for _ in range(7):
-            current_date += timedelta(days=1)
-            cell = DateCell(current_date, [])
-            while oid < len(offers) and offers[oid].timestamp.date() == current_date:
-                cell.subjects.append(offers[oid].subject)
-                oid += 1
-            row.append(cell)
-        rows.append("<tr>%s</tr>" % "".join(str(cell) for cell in row))
-
     with args.output.open("w") as f:
-        print("<table>", file=f)
-        print("<thead>", file=f)
-        print("<tr>%s</tr>" % "".join(f"<th>{d}</th>" for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), file=f)
-        print("</thead>", file=f)
-        print("<tbody>", file=f)
-        for row in rows:
-            print(row, file=f)
-        print("<tbody>", file=f)
-        print("</table>", file=f)
+        render(offers, f)
 
 
 def collect(imap: imaplib.IMAP4, cache_dir: Path | None) -> list["Offer"]:
@@ -85,6 +60,37 @@ def collect(imap: imaplib.IMAP4, cache_dir: Path | None) -> list["Offer"]:
         offers.append(Offer(timestamp=timestamp, subject=subject))
 
     return offers
+
+
+def render(offers: list["Offer"], f):
+    current_date = offers[0].timestamp.date()
+    current_date -= timedelta(days=current_date.weekday())  # move to the Monday before the first offer
+    end_date = offers[-1].timestamp.date()
+    end_date += timedelta(days=7 - end_date.weekday())  # move to the Monday after the last offer
+
+    oid = 0
+    rows = []
+    while current_date < end_date:
+        row: list[DateCell] = []
+        for _ in range(7):
+            current_date += timedelta(days=1)
+            cell = DateCell(current_date, [])
+            while oid < len(offers) and offers[oid].timestamp.date() == current_date:
+                cell.subjects.append(offers[oid].subject)
+                oid += 1
+            row.append(cell)
+        months = Counter(cell.date.strftime("%Y %B") for cell in row)
+        rows.append("<tr><td>{}</td>{}</tr>".format(
+            months.most_common(1)[0][0],
+            "".join(str(cell) for cell in row)
+        ))
+
+    print("<table><thead>", file=f)
+    print("<tr><th>Month</th>%s</tr>" % "".join(f"<th>{d}</th>" for d in ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]), file=f)
+    print("</thead><tbody>", file=f)
+    for row in rows:
+        print(row, file=f)
+    print("</tbody></table>", file=f)
 
 
 @dataclass
