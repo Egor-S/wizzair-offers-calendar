@@ -108,7 +108,7 @@ class DateCell:
         if not self.subjects:
             return f"<td>{self.date.day}</td>"
         subjects = "; ".join(self.subjects)
-        return f'<td style="background-color: green" title="{subjects}">{self.date.day}</td>'
+        return f'<td title="{subjects}">{self.date.day} 🏷️</td>'
 
 
 if __name__ == "__main__":
