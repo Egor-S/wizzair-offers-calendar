@@ -11,5 +11,5 @@ If you use 2FA you need to generate an [app password](https://support.google.com
 ## How to run the script
 
 ```bash
-python3 collect.py --username example@gmail.com --password $PASSWORD --json offers.json
+python3 collect.py --username example@gmail.com --password $PASSWORD --cache ./cache/
 ```
